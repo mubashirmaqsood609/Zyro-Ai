@@ -1,0 +1,52 @@
+
+name: Build ZYRO AI APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "*.zip"
+      - ".github/workflows/build-apk.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get source code
+        uses: actions/checkout@v4
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Extract Android project
+        run: |
+          mkdir source
+          ZIP_FILE=$(find . -maxdepth 1 -iname "*.zip" | head -n 1)
+          test -n "$ZIP_FILE"
+          unzip -q "$ZIP_FILE" -d source
+          PROJECT_DIR=$(dirname "$(find source -name settings.gradle -o -name settings.gradle.kts | head -n 1)")
+          test -n "$PROJECT_DIR"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build APK
+        run: gradle -p "$PROJECT_DIR" assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZYRO-AI-APK
+          path: "**/build/outputs/apk/debug/*.apk"
+          if-no-files-found: error
+          
